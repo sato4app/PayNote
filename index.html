@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#3b82f6">
+  <title>PayNote - カード使用記録</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Kaku Gothic ProN', sans-serif; }
+    input, select { font-size: 16px; }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    const STORAGE_KEYS = {
+      records: 'paynote_records',
+      cards: 'paynote_cards',
+      places: 'paynote_places',
+      settings: 'paynote_settings'
+    };
+
+    const DEFAULT_SETTINGS = { currency: '円', decimalPlaces: 0 };
+
+    const load = (key, fallback) => {
+      try {
+        const v = localStorage.getItem(key);
+        return v ? JSON.parse(v) : fallback;
+      } catch {
+        return fallback;
+      }
+    };
+    const save = (key, value) => localStorage.setItem(key, JSON.stringify(value));
+
+    const nowLocal = () => {
+      const d = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+
+    const formatAmount = (amount, settings) => {
+      const n = Number(amount);
+      return n.toLocaleString('ja-JP', {
+        minimumFractionDigits: settings.decimalPlaces,
+        maximumFractionDigits: settings.decimalPlaces
+      });
+    };
+
+    function InputScreen({ records, setRecords, cards, places, setPlaces, settings }) {
+      const [datetime, setDatetime] = useState(nowLocal());
+      const [place, setPlace] = useState('');
+      const [amount, setAmount] = useState('');
+      const [cardName, setCardName] = useState(cards[0] || '');
+      const [message, setMessage] = useState(null);
+
+      useEffect(() => {
+        if (!cardName && cards.length > 0) setCardName(cards[0]);
+      }, [cards]);
+
+      const handleSave = () => {
+        if (!place.trim()) { setMessage({ type: 'error', text: '場所を入力してください' }); return; }
+        if (!amount || Number(amount) <= 0) { setMessage({ type: 'error', text: '金額を入力してください' }); return; }
+        if (!cardName) { setMessage({ type: 'error', text: 'カードを選択してください' }); return; }
+
+        const newRecord = {
+          id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
+          datetime,
+          place: place.trim(),
+          amount: Number(amount),
+          cardName
+        };
+        setRecords([newRecord, ...records]);
+
+        if (!places.includes(place.trim())) {
+          setPlaces([...places, place.trim()]);
+        }
+
+        setMessage({ type: 'success', text: '記録しました' });
+        setPlace('');
+        setAmount('');
+        setDatetime(nowLocal());
+        setTimeout(() => setMessage(null), 2000);
+      };
+
+      return (
+        <div className="p-4 space-y-4">
+          <h2 className="text-lg font-bold text-gray-700">カード使用を記録</h2>
+
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-700">日時</label>
+            <div className="flex gap-2">
+              <input
+                type="datetime-local"
+                value={datetime}
+                onChange={e => setDatetime(e.target.value)}
+                className="flex-1 border rounded-lg p-2"
+              />
+              <button
+                onClick={() => setDatetime(nowLocal())}
+                className="bg-gray-200 hover:bg-gray-300 px-4 rounded-lg font-medium"
+              >now</button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-700">場所</label>
+            <input
+              type="text"
+              value={place}
+              onChange={e => setPlace(e.target.value)}
+              list="places-list"
+              className="w-full border rounded-lg p-2"
+              placeholder="場所を入力または選択"
+            />
+            <datalist id="places-list">
+              {places.map(p => <option key={p} value={p} />)}
+            </datalist>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-700">
+              金額（{settings.currency}）
+            </label>
+            <input
+              type="number"
+              inputMode={settings.decimalPlaces > 0 ? 'decimal' : 'numeric'}
+              step={settings.decimalPlaces > 0 ? Math.pow(10, -settings.decimalPlaces).toFixed(settings.decimalPlaces) : '1'}
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              className="w-full border rounded-lg p-2 text-right text-lg"
+              placeholder="0"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-700">カード</label>
+            {cards.length === 0 ? (
+              <p className="text-sm text-red-600 p-2 bg-red-50 rounded">
+                先に設定画面でカードを登録してください
+              </p>
+            ) : (
+              <select
+                value={cardName}
+                onChange={e => setCardName(e.target.value)}
+                className="w-full border rounded-lg p-2 bg-white"
+              >
+                {cards.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            )}
+          </div>
+
+          {message && (
+            <div className={`p-2 rounded text-center ${message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+              {message.text}
+            </div>
+          )}
+
+          <button
+            onClick={handleSave}
+            disabled={cards.length === 0}
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-bold disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            記録する
+          </button>
+        </div>
+      );
+    }
+
+    function HistoryScreen({ records, setRecords, settings }) {
+      const grouped = useMemo(() => {
+        const sorted = [...records].sort((a, b) => b.datetime.localeCompare(a.datetime));
+        const groups = {};
+        sorted.forEach(r => {
+          const month = r.datetime.slice(0, 7);
+          if (!groups[month]) groups[month] = [];
+          groups[month].push(r);
+        });
+        return groups;
+      }, [records]);
+
+      const monthlyTotals = useMemo(() => {
+        const totals = {};
+        Object.entries(grouped).forEach(([month, recs]) => {
+          totals[month] = recs.reduce((sum, r) => sum + Number(r.amount), 0);
+        });
+        return totals;
+      }, [grouped]);
+
+      const handleExport = () => {
+        const header = '日時,場所,金額,カード名\n';
+        const rows = [...records]
+          .sort((a, b) => a.datetime.localeCompare(b.datetime))
+          .map(r => {
+            const dt = r.datetime.replace('T', ' ');
+            const escape = s => `"${String(s).replace(/"/g, '""')}"`;
+            const amount = Number(r.amount).toFixed(settings.decimalPlaces);
+            return `${dt},${escape(r.place)},${amount},${escape(r.cardName)}`;
+          })
+          .join('\n');
+        const csv = '﻿' + header + rows + '\n';
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `paynote_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+
+      const handleDelete = (id) => {
+        if (confirm('この記録を削除しますか？')) {
+          setRecords(records.filter(r => r.id !== id));
+        }
+      };
+
+      return (
+        <div className="p-4 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold text-gray-700">履歴</h2>
+            <button
+              onClick={handleExport}
+              disabled={records.length === 0}
+              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:bg-gray-300"
+            >CSV出力</button>
+          </div>
+
+          {records.length === 0 ? (
+            <p className="text-gray-500 text-center py-8">記録がありません</p>
+          ) : (
+            Object.entries(grouped).map(([month, recs]) => (
+              <div key={month} className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="bg-gray-100 px-4 py-2 flex justify-between items-center">
+                  <span className="font-bold">{month}</span>
+                  <span className="text-sm">
+                    合計 <span className="font-bold">{formatAmount(monthlyTotals[month], settings)}</span> {settings.currency}
+                  </span>
+                </div>
+                <div className="divide-y">
+                  {recs.map(r => (
+                    <div key={r.id} className="p-3 flex justify-between items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-gray-500">{r.datetime.replace('T', ' ')}</div>
+                        <div className="font-medium truncate">{r.place}</div>
+                        <div className="text-xs text-gray-600">{r.cardName}</div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-bold whitespace-nowrap">
+                          {formatAmount(r.amount, settings)} {settings.currency}
+                        </div>
+                        <button
+                          onClick={() => handleDelete(r.id)}
+                          className="text-xs text-red-500 hover:text-red-700 mt-1"
+                        >削除</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      );
+    }
+
+    function SettingsScreen({ cards, setCards, places, setPlaces, settings, setSettings }) {
+      const [newCard, setNewCard] = useState('');
+      const [newPlace, setNewPlace] = useState('');
+
+      const addCard = () => {
+        const v = newCard.trim();
+        if (v && !cards.includes(v)) {
+          setCards([...cards, v]);
+          setNewCard('');
+        }
+      };
+
+      const removeCard = (c) => {
+        if (confirm(`カード「${c}」を削除しますか？`)) {
+          setCards(cards.filter(x => x !== c));
+        }
+      };
+
+      const addPlace = () => {
+        const v = newPlace.trim();
+        if (v && !places.includes(v)) {
+          setPlaces([...places, v]);
+          setNewPlace('');
+        }
+      };
+
+      const removePlace = (p) => {
+        if (confirm(`場所「${p}」を削除しますか？`)) {
+          setPlaces(places.filter(x => x !== p));
+        }
+      };
+
+      return (
+        <div className="p-4 space-y-6">
+          <h2 className="text-lg font-bold text-gray-700">設定</h2>
+
+          <section className="bg-white p-4 rounded-lg shadow space-y-3">
+            <h3 className="font-bold text-gray-700">通貨設定</h3>
+            <div>
+              <label className="block text-sm mb-1 text-gray-600">通貨単位</label>
+              <input
+                type="text"
+                value={settings.currency}
+                onChange={e => setSettings({ ...settings, currency: e.target.value })}
+                className="w-full border rounded p-2"
+                placeholder="例: 円, $, €"
+              />
+            </div>
+            <div>
+              <label className="block text-sm mb-1 text-gray-600">小数点以下の桁数</label>
+              <select
+                value={settings.decimalPlaces}
+                onChange={e => setSettings({ ...settings, decimalPlaces: Number(e.target.value) })}
+                className="w-full border rounded p-2 bg-white"
+              >
+                <option value="0">0（整数）</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+              </select>
+            </div>
+          </section>
+
+          <section className="bg-white p-4 rounded-lg shadow space-y-3">
+            <h3 className="font-bold text-gray-700">カード管理</h3>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newCard}
+                onChange={e => setNewCard(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addCard()}
+                placeholder="カード名"
+                className="flex-1 border rounded p-2"
+              />
+              <button
+                onClick={addCard}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 rounded font-medium"
+              >追加</button>
+            </div>
+            <ul className="divide-y">
+              {cards.map(c => (
+                <li key={c} className="py-2 flex justify-between items-center">
+                  <span>{c}</span>
+                  <button onClick={() => removeCard(c)} className="text-red-500 hover:text-red-700 text-sm">削除</button>
+                </li>
+              ))}
+              {cards.length === 0 && <li className="py-2 text-gray-500 text-sm">未登録</li>}
+            </ul>
+          </section>
+
+          <section className="bg-white p-4 rounded-lg shadow space-y-3">
+            <h3 className="font-bold text-gray-700">場所管理</h3>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newPlace}
+                onChange={e => setNewPlace(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addPlace()}
+                placeholder="場所名"
+                className="flex-1 border rounded p-2"
+              />
+              <button
+                onClick={addPlace}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 rounded font-medium"
+              >追加</button>
+            </div>
+            <ul className="divide-y">
+              {places.map(p => (
+                <li key={p} className="py-2 flex justify-between items-center">
+                  <span>{p}</span>
+                  <button onClick={() => removePlace(p)} className="text-red-500 hover:text-red-700 text-sm">削除</button>
+                </li>
+              ))}
+              {places.length === 0 && (
+                <li className="py-2 text-gray-500 text-sm">未登録（記録時に自動登録されます）</li>
+              )}
+            </ul>
+          </section>
+        </div>
+      );
+    }
+
+    function App() {
+      const [tab, setTab] = useState('input');
+      const [records, setRecords] = useState(() => load(STORAGE_KEYS.records, []));
+      const [cards, setCards] = useState(() => load(STORAGE_KEYS.cards, []));
+      const [places, setPlaces] = useState(() => load(STORAGE_KEYS.places, []));
+      const [settings, setSettings] = useState(() => ({ ...DEFAULT_SETTINGS, ...load(STORAGE_KEYS.settings, {}) }));
+
+      useEffect(() => save(STORAGE_KEYS.records, records), [records]);
+      useEffect(() => save(STORAGE_KEYS.cards, cards), [cards]);
+      useEffect(() => save(STORAGE_KEYS.places, places), [places]);
+      useEffect(() => save(STORAGE_KEYS.settings, settings), [settings]);
+
+      return (
+        <div className="min-h-screen pb-20">
+          <header className="bg-blue-500 text-white p-4 shadow">
+            <h1 className="text-xl font-bold">PayNote</h1>
+          </header>
+
+          <main>
+            {tab === 'input' && (
+              <InputScreen
+                records={records} setRecords={setRecords}
+                cards={cards}
+                places={places} setPlaces={setPlaces}
+                settings={settings}
+              />
+            )}
+            {tab === 'history' && (
+              <HistoryScreen records={records} setRecords={setRecords} settings={settings} />
+            )}
+            {tab === 'settings' && (
+              <SettingsScreen
+                cards={cards} setCards={setCards}
+                places={places} setPlaces={setPlaces}
+                settings={settings} setSettings={setSettings}
+              />
+            )}
+          </main>
+
+          <nav className="fixed bottom-0 left-0 right-0 bg-white border-t flex shadow-lg">
+            {[
+              ['input', '入力'],
+              ['history', '履歴'],
+              ['settings', '設定']
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={`flex-1 py-3 text-sm font-medium transition-colors ${tab === key ? 'text-blue-500 border-t-2 border-blue-500 -mt-px' : 'text-gray-600'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+        </div>
+      );
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js').catch(() => {});
+      });
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

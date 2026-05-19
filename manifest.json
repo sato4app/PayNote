@@ -1,0 +1,20 @@
+{
+  "name": "PayNote - カード使用記録",
+  "short_name": "PayNote",
+  "description": "クレジットカードの使用を簡単に記録するPWAアプリ",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f9fafb",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,9 +1,11 @@
-const CACHE_NAME = 'paynote-v1';
+const CACHE_NAME = 'paynote-v2';
 const CACHE_URLS = [
   './',
   './index.html',
   './manifest.json',
-  './icon.svg'
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/favicon.ico'
 ];
 
 self.addEventListener('install', event => {

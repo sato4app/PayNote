@@ -101,67 +101,63 @@
         <div className="p-4 space-y-4">
           <h2 className="text-lg font-bold text-gray-700">カード使用を記録</h2>
 
-          <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">日付</label>
-            <div className="flex gap-2">
+          <div className="flex gap-2">
+            <div className="w-2/5">
+              <label className="block text-sm font-medium mb-1 text-gray-700">日付</label>
               <input
                 type="date"
                 value={datetime}
                 onChange={e => setDatetime(e.target.value)}
-                className="flex-1 border rounded-lg p-2"
+                className="w-full border rounded-lg p-2"
               />
-              <button
-                onClick={() => setDatetime(todayLocal())}
-                className="bg-gray-200 hover:bg-gray-300 px-4 rounded-lg font-medium"
-              >今日</button>
+            </div>
+            <div className="flex-1">
+              <label className="block text-sm font-medium mb-1 text-gray-700">場所</label>
+              <input
+                type="text"
+                value={place}
+                onChange={e => setPlace(e.target.value)}
+                list="places-list"
+                className="w-full border rounded-lg p-2"
+                placeholder="入力または選択"
+              />
+              <datalist id="places-list">
+                {places.map(p => <option key={p} value={p} />)}
+              </datalist>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">場所</label>
-            <input
-              type="text"
-              value={place}
-              onChange={e => setPlace(e.target.value)}
-              list="places-list"
-              className="w-full border rounded-lg p-2"
-              placeholder="場所を入力または選択"
-            />
-            <datalist id="places-list">
-              {places.map(p => <option key={p} value={p} />)}
-            </datalist>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">
-              金額（{settings.currency}）
-            </label>
-            <input
-              type="number"
-              inputMode={settings.decimalPlaces > 0 ? 'decimal' : 'numeric'}
-              step={settings.decimalPlaces > 0 ? Math.pow(10, -settings.decimalPlaces).toFixed(settings.decimalPlaces) : '1'}
-              value={amount}
-              onChange={e => setAmount(e.target.value)}
-              className="w-full border rounded-lg p-2 text-right text-lg"
-              placeholder="0"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">カード</label>
-            {cards.length === 0 ? (
-              <p className="text-sm text-red-600 p-2 bg-red-50 rounded">
-                先に設定画面でカードを登録してください
-              </p>
-            ) : (
-              <select
-                value={cardName}
-                onChange={e => setCardName(e.target.value)}
-                className="w-full border rounded-lg p-2 bg-white"
-              >
-                {cards.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            )}
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="block text-sm font-medium mb-1 text-gray-700">
+                金額（{settings.currency}）
+              </label>
+              <input
+                type="number"
+                inputMode={settings.decimalPlaces > 0 ? 'decimal' : 'numeric'}
+                step={settings.decimalPlaces > 0 ? Math.pow(10, -settings.decimalPlaces).toFixed(settings.decimalPlaces) : '1'}
+                value={amount}
+                onChange={e => setAmount(e.target.value)}
+                className="w-full border rounded-lg p-2 text-right text-lg"
+                placeholder="0"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-sm font-medium mb-1 text-gray-700">カード</label>
+              {cards.length === 0 ? (
+                <p className="text-sm text-red-600 p-2 bg-red-50 rounded">
+                  先に設定画面でカードを登録してください
+                </p>
+              ) : (
+                <select
+                  value={cardName}
+                  onChange={e => setCardName(e.target.value)}
+                  className="w-full border rounded-lg p-2 bg-white"
+                >
+                  {cards.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              )}
+            </div>
           </div>
 
           {message && (
